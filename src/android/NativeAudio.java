@@ -43,6 +43,7 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
 	public static final String PLAY="play";
 	public static final String STOP="stop";
 	public static final String LOOP="loop";
+	public static final String CHAIN="chain";
 	public static final String UNLOAD="unload";
     public static final String ADD_COMPLETE_LISTENER="addCompleteListener";
 	public static final String SET_VOLUME_FOR_COMPLEX_ASSET="setVolumeForComplexAsset";
@@ -87,7 +88,7 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
 				Context ctx = cordova.getActivity().getApplicationContext();
 				AssetManager am = ctx.getResources().getAssets();
 				AssetFileDescriptor afd = am.openFd(fullPath);
-
+				// Uri uri = Uri.parse("file:///android_asset/" + fullPath);
 				NativeAudioAsset asset = new NativeAudioAsset(
 						afd, voices, (float)volume);
 				assetMap.put(audioID, asset);
@@ -178,6 +179,41 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
 		return new PluginResult(Status.OK);
 	}
 
+	private PluginResult executeChain(JSONArray data) {
+		String audioID;
+
+
+		try {
+			audioID = data.getString(0);
+			final String audioID2 = data.getString(1);
+			boolean loop = data.getBoolean(2);
+
+			Log.d( LOGTAG, "chain - " + audioID + " " + audioID2 );
+			
+			if (assetMap.containsKey(audioID) && assetMap.containsKey(audioID2)) {
+				NativeAudioAsset asset = assetMap.get(audioID);
+				NativeAudioAsset asset2 = assetMap.get(audioID2);
+				asset2.setCompleteCb(new Callable<Void>() {
+                    public Void call() throws Exception {
+                        CallbackContext callbackContext = completeCallbacks.get(audioID2);
+                        if (callbackContext != null) {
+                            JSONObject done = new JSONObject();
+                            done.put("id", audioID2);
+                            callbackContext.sendPluginResult(new PluginResult(Status.OK, done));
+                        }
+                        return null;
+                    }
+                });
+				asset.chain(asset2, loop);
+			} else {
+				return new PluginResult(Status.ERROR, ERROR_NO_AUDIOID);
+			}
+		} catch (JSONException e) {
+			return new PluginResult(Status.ERROR, e.toString());
+		}
+		return new PluginResult(Status.OK);
+	}
+
 	private PluginResult executeSetVolumeForComplexAsset(JSONArray data) {
 		String audioID;
 		float volume;
@@ -239,6 +275,14 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
 		            }
 		        });				
 
+			} else if (CHAIN.equals(action)) {
+				cordova.getThreadPool().execute(new Runnable() {
+		            public void run() {
+		            	callbackContext.sendPluginResult( executeChain(data) );
+		            }
+		        });				
+				
+			
 			} else if (PLAY.equals(action) || LOOP.equals(action)) {
 				cordova.getThreadPool().execute(new Runnable() {
 		            public void run() {

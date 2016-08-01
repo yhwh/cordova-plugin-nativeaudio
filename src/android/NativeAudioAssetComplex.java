@@ -9,14 +9,16 @@ package com.rjfun.cordova.plugin.nativeaudio;
 
 import java.io.IOException;
 import java.util.concurrent.Callable;
-
 import android.content.res.AssetFileDescriptor;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnPreparedListener;
+import android.util.Log;
 
 public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletionListener {
+
+	private static final String TAG = NativeAudioAssetComplex.class.getSimpleName();
 
 	private static final int INVALID = 0;
 	private static final int PREPARED = 1;
@@ -26,60 +28,114 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	private static final int LOOPING = 5;
 	
 	private MediaPlayer mp;
+	private MediaPlayer nextMp;
 	private int state;
+	private boolean loopChain;
     Callable<Void> completeCallback;
+
+    AssetFileDescriptor a;
+    float v;
 
 	public NativeAudioAssetComplex( AssetFileDescriptor afd, float volume)  throws IOException
 	{
 		state = INVALID;
 		mp = new MediaPlayer();
-        mp.setOnCompletionListener(this);
+
         mp.setOnPreparedListener(this);
+        a = afd;
+        v = volume;
 		mp.setDataSource( afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
 		mp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
 		mp.setVolume(volume, volume);
 		mp.prepare();
+		mp.setOnCompletionListener(this);
+
 	}
 	
+	public MediaPlayer getPlayer() {
+		return mp;
+	}
+
+	public void chain (MediaPlayer p) {
+		mp.setNextMediaPlayer(p);
+	}
+
+	public void setCompleteCb (Callable<Void> completeCb) {
+   		completeCallback = completeCb;
+	}
+
+	public void prepareLoop() {
+
+		    try {
+				createNextMediaPlayer();
+				state = LOOPING;
+			} catch (IOException e) {
+			};
+	
+	}
+
+	private void createNextMediaPlayer() throws IOException {
+
+        nextMp = new MediaPlayer();
+
+
+
+        nextMp.setDataSource(a.getFileDescriptor(), a.getStartOffset(), a.getLength());
+		nextMp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
+		nextMp.setVolume(v, v);
+		nextMp.prepare();
+
+		nextMp.setOnCompletionListener(this);
+	
+
+		mp.setNextMediaPlayer(nextMp);
+  
+    }
+
 	public void play(Callable<Void> completeCb) throws IOException
 	{
         completeCallback = completeCb;
 		invokePlay( false );
 	}
 	
-	private void invokePlay( Boolean loop )
+	private void invokePlay( Boolean loop ) throws IOException
 	{
+		// Log.d(TAG, String.format("BEFORE invoke: %d", state));
+
 		Boolean playing = mp.isPlaying();
+
+		if (loop) {
+			createNextMediaPlayer();
+		} 
+
 		if ( playing )
 		{
 			mp.pause();
-			mp.setLooping(loop);
 			mp.seekTo(0);
+			state = PLAYING;
 			mp.start();
 		}
-		if ( !playing && state == PREPARED )
+
+		if ( !playing )
 		{
 			state = (loop ? PENDING_LOOP : PENDING_PLAY);
 			onPrepared( mp );
 		}
-		else if ( !playing )
-		{
-			state = (loop ? PENDING_LOOP : PENDING_PLAY);
-			mp.setLooping(loop);
-			mp.start();
-		}
+
+
+
 	}
 
 	public boolean pause()
 	{
 		try
 		{
-    				if ( mp.isPlaying() )
-				{
-					mp.pause();
-					return true;
-				}
-        	}
+			if ( mp.isPlaying() )
+			{
+				mp.pause();
+				return true;
+			}
+    	}
 		catch (IllegalStateException e)
 		{
 		// I don't know why this gets thrown; catch here to save app
@@ -96,6 +152,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	{
 		try
 		{
+			mp.setNextMediaPlayer(null);
 			if ( mp.isPlaying() )
 			{
 				state = INVALID;
@@ -107,6 +164,9 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	        {
             // I don't know why this gets thrown; catch here to save app
 	        }
+
+
+
 	}
 
 	public void setVolume(float volume) 
@@ -136,27 +196,29 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	{
 		if (state == PENDING_PLAY) 
 		{
-			mp.setLooping(false);
-			mp.seekTo(0);
-			mp.start();
 			state = PLAYING;
+			mp.start();
+			
 		}
 		else if ( state == PENDING_LOOP )
 		{
-			mp.setLooping(true);
-			mp.seekTo(0);
-			mp.start();
 			state = LOOPING;
+			mp.start();
+
 		}
 		else
 		{
 			state = PREPARED;
-			mp.seekTo(0);
 		}
+
 	}
 	
-	public void onCompletion(MediaPlayer mPlayer)
+	public void onCompletion(MediaPlayer mPlayer) 
 	{
+
+
+		Log.d(TAG, String.format("Completed: %d\n", state));
+
 		if (state != LOOPING)
 		{
 			this.state = INVALID;
@@ -169,6 +231,15 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 			{
 				e.printStackTrace();
 			}
+		} else {
+			mPlayer.release();	  
+            mp = nextMp;
+            try {
+				createNextMediaPlayer();
+				mp.setOnCompletionListener(this);
+			} catch (IOException e) {
+			}
+	
 		}
 	}
 }

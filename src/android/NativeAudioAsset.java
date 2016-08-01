@@ -10,7 +10,7 @@ package com.rjfun.cordova.plugin.nativeaudio;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
-
+import android.media.MediaPlayer;
 import android.content.res.AssetFileDescriptor;
 
 public class NativeAudioAsset
@@ -62,6 +62,42 @@ public class NativeAudioAsset
 		}
 	}
 
+	public void chain(NativeAudioAsset asset2, boolean loop)  {
+		if (voices.size() > 0)
+		{
+			NativeAudioAssetComplex voice = voices.get(0);
+			if (loop) {
+				asset2.prepareLoop();
+			}
+			voice.chain(asset2.getPlayer());
+		}
+	}
+
+	public void prepareLoop()  {
+		if (voices.size() > 0)
+		{
+			NativeAudioAssetComplex voice = voices.get(0);
+			voice.prepareLoop();
+		}
+	}
+
+	public void setCompleteCb (Callable<Void> completeCb) {
+		if (voices.size() > 0)
+		{
+			NativeAudioAssetComplex voice = voices.get(0);
+			voice.setCompleteCb(completeCb);
+		}
+	}
+
+	public MediaPlayer getPlayer() {
+		if (voices.size() > 0)
+		{
+			NativeAudioAssetComplex voice = voices.get(0);
+			return voice.getPlayer();
+		}	
+		return null;
+	}
+
     public void stop()
 	{
 		for ( int x=0; x<voices.size(); x++) 
@@ -78,6 +114,8 @@ public class NativeAudioAsset
 		playIndex++;
 		playIndex = playIndex % voices.size();
 	}
+
+
 	
 	public void unload() throws IOException
 	{

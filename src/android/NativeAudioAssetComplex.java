@@ -29,6 +29,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	
 	private MediaPlayer mp;
 	private MediaPlayer nextMp;
+	private NativeAudioAsset nextAsset = null;
 	private int state;
 	private boolean loopChain;
     Callable<Void> completeCallback;
@@ -56,8 +57,10 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		return mp;
 	}
 
-	public void chain (MediaPlayer p) {
-		mp.setNextMediaPlayer(p);
+	public void chain (NativeAudioAsset n) {
+		nextAsset = n;
+		nextAsset.getPlayer().seekTo(0);
+		mp.setNextMediaPlayer(nextAsset.getPlayer());
 	}
 
 	public void setCompleteCb (Callable<Void> completeCb) {
@@ -104,6 +107,8 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 
 		Boolean playing = mp.isPlaying();
 
+
+
 		if (loop) {
 			createNextMediaPlayer();
 		} 
@@ -123,6 +128,11 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		}
 
 
+		if (state != INVALID && nextAsset != null) {
+		
+			chain(nextAsset);
+		
+		}
 
 	}
 
@@ -152,13 +162,13 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	{
 		try
 		{
-			mp.setNextMediaPlayer(null);
+			// mp.setNextMediaPlayer(null);
 			if ( mp.isPlaying() )
 			{
 				state = INVALID;
 				mp.pause();
 				mp.seekTo(0);
-	           	}
+	        }
 		}
 	        catch (IllegalStateException e)
 	        {
@@ -222,8 +232,24 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		if (state != LOOPING)
 		{
 			this.state = INVALID;
+
+			mp.stop();
+			mp.release();
+
 			try {
-				this.stop();
+
+				state = INVALID;
+				mp = new MediaPlayer();
+
+		        mp.setOnPreparedListener(this);
+				mp.setDataSource(a.getFileDescriptor(), a.getStartOffset(), a.getLength());
+				mp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
+				mp.setVolume(v, v);
+				mp.setOnPreparedListener(this);
+
+				mp.prepare();
+				mp.setOnCompletionListener(this);
+
 				if (completeCallback != null)
                 completeCallback.call();
 			}

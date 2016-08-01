@@ -69,7 +69,7 @@ public class NativeAudioAsset
 			if (loop) {
 				asset2.prepareLoop();
 			}
-			voice.chain(asset2.getPlayer());
+			voice.chain(asset2);
 		}
 	}
 

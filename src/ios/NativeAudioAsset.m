@@ -57,13 +57,20 @@ static const CGFloat FADE_DELAY = 0.08;
 - (void) playAtTime:(NSTimeInterval)time;
 {
     AVAudioPlayer * player = [voices objectAtIndex:playIndex];
-    [player playAtTime: player.deviceCurrentTime + time];
+
+    if (self->chainedAsset) {
+        NativeAudioAsset * asset = self->chainedAsset;
+        [asset playAtTime: time + player.duration];
+    }
+    
+    [player playAtTime: time];
 
     if (chainLoop) {
         player.numberOfLoops = -1;
     } else {
         player.numberOfLoops = 0;
     }
+
 }
 
 - (void) play
@@ -71,11 +78,13 @@ static const CGFloat FADE_DELAY = 0.08;
     AVAudioPlayer * player = [voices objectAtIndex:playIndex];
     [player setCurrentTime:0.0];
     player.numberOfLoops = 0;
+    [player play];
+
     if (self->chainedAsset) {
         NativeAudioAsset * asset = self->chainedAsset;
-        [asset playAtTime: player.duration];
+        [asset playAtTime: player.currentTime + player.deviceCurrentTime + player.duration + 0.01];
     }
-    [player play];
+    
     playIndex += 1;
     playIndex = playIndex % [voices count];
 }
@@ -116,11 +125,6 @@ static const CGFloat FADE_DELAY = 0.08;
     for (int x = 0; x < [voices count]; x++) {
         AVAudioPlayer * player = [voices objectAtIndex:x];
         [player stop];
-    }
-
-    if (self->chainedAsset) {
-        NativeAudioAsset * asset = self->chainedAsset;
-        [asset stop];
     }
 }
 

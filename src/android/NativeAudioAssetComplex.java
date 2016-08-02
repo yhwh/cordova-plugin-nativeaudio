@@ -28,7 +28,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	private static final int LOOPING = 5;
 	
 	private MediaPlayer mp;
-	private MediaPlayer nextMp;
+	private MediaPlayer nextMp = null;
 	private NativeAudioAsset nextAsset = null;
 	private int state;
 	private boolean loopChain;
@@ -181,11 +181,15 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 
 	public void setVolume(float volume) 
 	{
-	        try
-	        {
+        try
+        {
 			mp.setVolume(volume,volume);
-            	}
-            	catch (IllegalStateException e) 
+			v = volume;
+			if (nextMp != null) {
+				nextMp.setVolume(volume, volume);
+			}
+        }
+            catch (IllegalStateException e) 
 		{
                 // I don't know why this gets thrown; catch here to save app
 		}

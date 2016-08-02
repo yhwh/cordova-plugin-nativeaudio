@@ -46,6 +46,38 @@ static const CGFloat FADE_DELAY = 0.08;
     return(self);
 }
 
+-(id) initWithUrl:(NSString*) url withVoices:(NSNumber*) numVoices withVolume:(NSNumber*) volume withFadeDelay:(NSNumber *)delay
+{
+    self = [super init];
+    self->chainedAsset = nil;
+    self->chainLoop = false;
+    if(self) {
+        voices = [[NSMutableArray alloc] init];  
+        
+        NSURL *pathURL = [NSURL URLWithString:url];
+        NSData *data = [NSData dataWithContentsOfURL:pathURL];
+        for (int x = 0; x < [numVoices intValue]; x++) {
+    
+            AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithData:data error:NULL];
+            player.volume = volume.floatValue;
+            [player prepareToPlay];
+            [voices addObject:player];
+            [player setDelegate:self];
+            
+            if(delay)
+            {
+                fadeDelay = delay;
+            }
+            else {
+                fadeDelay = [NSNumber numberWithFloat:FADE_DELAY];
+            }
+            
+            initialVolume = volume;
+        }
+        playIndex = 0;
+    }
+    return(self);
+}
 
 
 - (void) chain:(NativeAudioAsset*) asset loop:(bool)loop;

@@ -31,21 +31,31 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	private MediaPlayer nextMp = null;
 	private NativeAudioAsset nextAsset = null;
 	private int state;
+	private String url;
 	private boolean loopChain;
+
     Callable<Void> completeCallback;
 
-    AssetFileDescriptor a;
+    AssetFileDescriptor afd;
     float v;
 
-	public NativeAudioAssetComplex( AssetFileDescriptor afd, float volume)  throws IOException
+	public NativeAudioAssetComplex(AssetFileDescriptor a, String uri, float volume)  throws IOException
 	{
 		state = INVALID;
 		mp = new MediaPlayer();
 
         mp.setOnPreparedListener(this);
-        a = afd;
+  		afd = a;
+
+  		url = uri;
+
+       	if (afd == null) {
+            mp.setDataSource(url);
+       	} else {
+		    mp.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+       	}
+        
         v = volume;
-		mp.setDataSource( afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
 		mp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
 		mp.setVolume(volume, volume);
 		mp.prepare();
@@ -81,9 +91,13 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 
         nextMp = new MediaPlayer();
 
+       	if (afd == null) {
+            nextMp.setDataSource(url);
+       	} else {
+		    nextMp.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+       	}
 
-
-        nextMp.setDataSource(a.getFileDescriptor(), a.getStartOffset(), a.getLength());
+        
 		nextMp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
 		nextMp.setVolume(v, v);
 		nextMp.prepare();
@@ -246,10 +260,15 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 				mp = new MediaPlayer();
 
 		        mp.setOnPreparedListener(this);
-				mp.setDataSource(a.getFileDescriptor(), a.getStartOffset(), a.getLength());
+
+		       	if (afd == null) {
+		            mp.setDataSource(url);
+		       	} else {
+		       		mp.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+		       	}
+
 				mp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
 				mp.setVolume(v, v);
-				mp.setOnPreparedListener(this);
 
 				mp.prepare();
 				mp.setOnCompletionListener(this);

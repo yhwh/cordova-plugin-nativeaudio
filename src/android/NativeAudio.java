@@ -28,6 +28,7 @@ import org.apache.cordova.PluginResult;
 import org.apache.cordova.PluginResult.Status;
 import org.json.JSONObject;
 
+import java.io.File;
 
 public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFocusChangeListener {
 
@@ -87,10 +88,20 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
 
 				Context ctx = cordova.getActivity().getApplicationContext();
 				AssetManager am = ctx.getResources().getAssets();
-				AssetFileDescriptor afd = am.openFd(fullPath);
-				// Uri uri = Uri.parse("file:///android_asset/" + fullPath);
-				NativeAudioAsset asset = new NativeAudioAsset(
-						afd, voices, (float)volume);
+
+				AssetFileDescriptor afd = null;
+
+				// String filename = "android.resource://" + cordova.getActivity().getPackageName() + "/" + fullPath;
+				// // Uri uri = Uri.parse("file:///android_asset/" + fullPath);
+
+ 				// final File file = new File("file:///android_asset/" + fullPath);
+     //    		if (file.exists()) {
+				try {
+					afd = am.openFd(fullPath);
+				} catch (IOException e) {
+				}// }
+
+				NativeAudioAsset asset = new NativeAudioAsset(afd, assetPath, voices, (float)volume);
 				assetMap.put(audioID, asset);
 
 				return new PluginResult(Status.OK);

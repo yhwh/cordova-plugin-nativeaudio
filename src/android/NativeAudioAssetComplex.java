@@ -58,7 +58,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
         v = volume;
 		mp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
 		mp.setVolume(volume, volume);
-		mp.prepare();
+		mp.prepareAsync();
 		mp.setOnCompletionListener(this);
 
 	}
@@ -100,7 +100,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
         
 		nextMp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
 		nextMp.setVolume(v, v);
-		nextMp.prepare();
+		nextMp.prepareAsync();
 
 		nextMp.setOnCompletionListener(this);
 	
@@ -249,9 +249,9 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 
 		if (state != LOOPING)
 		{
-			this.state = INVALID;
+		
 
-			mp.stop();
+
 			mp.release();
 
 			try {
@@ -270,7 +270,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 				mp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
 				mp.setVolume(v, v);
 
-				mp.prepare();
+				mp.prepareAsync();
 				mp.setOnCompletionListener(this);
 
 				if (completeCallback != null)

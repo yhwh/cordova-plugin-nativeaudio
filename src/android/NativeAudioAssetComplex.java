@@ -6,7 +6,7 @@
 //
 
 package com.rjfun.cordova.plugin.nativeaudio;
-
+import android.os.AsyncTask;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import android.content.res.AssetFileDescriptor;
@@ -26,25 +26,31 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	private static final int PLAYING = 3;
 	private static final int PENDING_LOOP = 4;
 	private static final int LOOPING = 5;
-	
+	private static final int STOPPED = 6;
+	private int loopCount = -1;
+	private int currentLoopCount = 0;
 	private MediaPlayer mp;
 	private MediaPlayer nextMp = null;
-	private NativeAudioAsset nextAsset = null;
+	private NativeAudioAssetComplex prevAsset = null;
 	private int state;
 	private String url;
-	private boolean loopChain;
+	private boolean loopChain = false;
 
     Callable<Void> completeCallback;
+    Callable<Void> loadCallback;
 
     AssetFileDescriptor afd;
     float v;
 
+    NativeAudioAssetComplex currentAsset;
+
 	public NativeAudioAssetComplex(AssetFileDescriptor a, String uri, float volume)  throws IOException
 	{
+		currentAsset = this;
 		state = INVALID;
-		mp = new MediaPlayer();
+		mp = new CompatMediaPlayer();
 
-        mp.setOnPreparedListener(this);
+
   		afd = a;
 
   		url = uri;
@@ -58,7 +64,10 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
         v = volume;
 		mp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
 		mp.setVolume(volume, volume);
+	
+		mp.setOnPreparedListener(this);
 		mp.prepareAsync();
+
 		mp.setOnCompletionListener(this);
 
 	}
@@ -67,10 +76,13 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		return mp;
 	}
 
-	public void chain (NativeAudioAsset n) {
-		nextAsset = n;
-		nextAsset.getPlayer().seekTo(0);
-		mp.setNextMediaPlayer(nextAsset.getPlayer());
+	public void chainWithPrev(NativeAudioAssetComplex p) {
+		prevAsset = p;
+		prevAsset.getPlayer().setNextMediaPlayer(mp);
+	}
+
+	public void setLoadCb(Callable<Void> loadCb) {
+		loadCallback = loadCb;
 	}
 
 	public void setCompleteCb (Callable<Void> completeCb) {
@@ -82,6 +94,8 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		    try {
 				createNextMediaPlayer();
 				state = LOOPING;
+				Log.d(TAG, String.format("AAAAAAAA  PREPARE LOOP !!!!"));
+
 			} catch (IOException e) {
 			};
 	
@@ -89,7 +103,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 
 	private void createNextMediaPlayer() throws IOException {
 
-        nextMp = new MediaPlayer();
+        nextMp = new CompatMediaPlayer();
 
        	if (afd == null) {
             nextMp.setDataSource(url);
@@ -100,12 +114,17 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
         
 		nextMp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
 		nextMp.setVolume(v, v);
+		
+		
+		nextMp.setOnPreparedListener(new OnPreparedListener() {
+		     public void onPrepared(MediaPlayer nextMp) {
+		        mp.setNextMediaPlayer(nextMp);
+		     }
+		});
+
 		nextMp.prepareAsync();
 
 		nextMp.setOnCompletionListener(this);
-	
-
-		mp.setNextMediaPlayer(nextMp);
   
     }
 
@@ -131,22 +150,23 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		{
 			mp.pause();
 			mp.seekTo(0);
-			state = PLAYING;
+			state = (loop ? LOOPING : PLAYING);
 			mp.start();
 		}
 
 		if ( !playing )
 		{
-			state = (loop ? PENDING_LOOP : PENDING_PLAY);
-			onPrepared( mp );
+			if (state == PREPARED || state == STOPPED) {
+				state = (loop ? LOOPING : PLAYING);
+				mp.start();
+		
+			} else {
+				state = (loop ? PENDING_LOOP : PENDING_PLAY);
+			}
 		}
 
 
-		if (state != INVALID && nextAsset != null) {
-		
-			chain(nextAsset);
-		
-		}
+		Log.d(TAG, String.format("\n\nAFTER PLAY INVOKED: %d\n\n", state));
 
 	}
 
@@ -176,12 +196,15 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	{
 		try
 		{
+			// state = INVALID;
 			// mp.setNextMediaPlayer(null);
 			if ( mp.isPlaying() )
 			{
-				state = INVALID;
+				state = STOPPED;
 				mp.pause();
 				mp.seekTo(0);
+				currentLoopCount = 0;
+				loopCount = -1;
 	        }
 		}
 	        catch (IllegalStateException e)
@@ -209,8 +232,12 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		}
 	}
 	
-	public void loop() throws IOException
+	public void loop(int count) throws IOException
 	{
+		if (count >= 0) {
+			loopCount = count;
+		}
+		currentLoopCount = 0;
 		invokePlay( true );
 	}
 	
@@ -222,21 +249,33 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	
 	public void onPrepared(MediaPlayer mPlayer) 
 	{
-		if (state == PENDING_PLAY) 
-		{
-			state = PLAYING;
-			mp.start();
-			
-		}
-		else if ( state == PENDING_LOOP )
-		{
-			state = LOOPING;
-			mp.start();
 
+		Log.d(TAG, String.format("\n\n BEFORE PREPARED: %d\n\n", state));
+
+
+		state = PREPARED;
+		
+		
+		Log.d(TAG, String.format("\n\nAFTER PREPARED: %d\n\n", state));
+
+		if (prevAsset != null) {
+			Log.d(TAG, String.format("AAAAAAAA  setting next media player !!!!"));
+			prevAsset.getPlayer().setNextMediaPlayer(mp);
 		}
-		else
-		{
-			state = PREPARED;
+
+		if (loadCallback != null) {
+			try {
+				loadCallback.call();
+			}
+			catch (Exception e)
+			{
+			}
+			
+			loadCallback = null;
+		}
+
+		if (prevAsset != null) {
+			prevAsset.getPlayer().setNextMediaPlayer(mp);
 		}
 
 	}
@@ -245,21 +284,40 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	{
 
 
-		Log.d(TAG, String.format("Completed: %d\n", state));
+		// Log.d(TAG, String.format("Completed: %d\n", state));
+		currentLoopCount++;
 
-		if (state != LOOPING)
+		if (state != LOOPING || (currentLoopCount >= loopCount && loopCount != -1))
 		{
-		
+			(new ResetNoLoop()).execute();
+		} else {
+			// oldMp = mPlayer;
+			(new ResetLoop()).execute();
+	
+		}
+	}
 
+
+	private class ResetNoLoop extends AsyncTask<String, Void, String> {
+
+		@Override
+        protected String doInBackground(String... params) {
+        	try {
+            	Thread.sleep(100);
+        	} catch (Exception e) {
+
+        	}
+        	
 
 			mp.release();
 
 			try {
 
-				state = INVALID;
-				mp = new MediaPlayer();
 
-		        mp.setOnPreparedListener(this);
+				state = INVALID;
+				mp = new CompatMediaPlayer();
+
+		        mp.setOnPreparedListener(currentAsset);
 
 		       	if (afd == null) {
 		            mp.setDataSource(url);
@@ -271,24 +329,41 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 				mp.setVolume(v, v);
 
 				mp.prepareAsync();
-				mp.setOnCompletionListener(this);
+				mp.setOnCompletionListener(currentAsset);
 
-				if (completeCallback != null)
+
+
+			if (completeCallback != null)
                 completeCallback.call();
 			}
 			catch (Exception e)
 			{
 				e.printStackTrace();
 			}
-		} else {
-			mPlayer.release();	  
+			return "";
+       }
+
+
+    }
+	 private class ResetLoop extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected String doInBackground(String... params) {
+        	try {
+            	Thread.sleep(100);
+        	} catch (Exception e) {
+
+        	}
+            mp.release();	  
             mp = nextMp;
+
             try {
 				createNextMediaPlayer();
-				mp.setOnCompletionListener(this);
 			} catch (IOException e) {
 			}
-	
-		}
-	}
+
+			return "";
+        }
+
+    }
 }

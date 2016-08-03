@@ -49,8 +49,10 @@ module.exports  = {
         return cordova.exec(successCallback, errorCallback, "NativeAudio", "stop", [id]);
     },
 
-    loop: function(id, successCallback, errorCallback) {
-        return cordova.exec(successCallback, errorCallback, "NativeAudio", "loop", [id]);
+    loop: function(id, count, successCallback, errorCallback) {
+        count = isNaN(count) ? -1 : count;
+        
+        return cordova.exec(successCallback, errorCallback, "NativeAudio", "loop", [id, count]);
     },
 
     unload: function(id, successCallback, errorCallback) {

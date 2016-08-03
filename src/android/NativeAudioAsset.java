@@ -69,7 +69,15 @@ public class NativeAudioAsset
 			if (loop) {
 				asset2.prepareLoop();
 			}
-			voice.chain(asset2);
+			asset2.chainWithPrev(voice);
+		}
+	}
+
+	public void chainWithPrev(NativeAudioAssetComplex p)  {
+		if (voices.size() > 0)
+		{
+			NativeAudioAssetComplex voice = voices.get(0);
+			voice.chainWithPrev(p);
 		}
 	}
 
@@ -89,6 +97,13 @@ public class NativeAudioAsset
 		}
 	}
 
+	public void setLoadCb (Callable<Void> loadCb) {
+		if (voices.size() > 0)
+		{
+			NativeAudioAssetComplex voice = voices.get(0);
+			voice.setLoadCb(loadCb);
+		}
+	}
 	public MediaPlayer getPlayer() {
 		if (voices.size() > 0)
 		{
@@ -107,10 +122,10 @@ public class NativeAudioAsset
 		}
 	}
 	
-	public void loop() throws IOException
+	public void loop(int count) throws IOException
 	{
 		NativeAudioAssetComplex voice = voices.get(playIndex);
-		voice.loop();
+		voice.loop(count);
 		playIndex++;
 		playIndex = playIndex % voices.size();
 	}

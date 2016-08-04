@@ -252,7 +252,6 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
                     public Void call() throws Exception {
                     	JSONObject done = new JSONObject();
                         done.put("id", audioID);
-                        // PluginResult result =;
                         if (this.getSuccess()) {
                         	Log.d(LOGTAG, "FADETO - SUCCESS");
 
@@ -261,22 +260,14 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
                     		  Log.d(LOGTAG, "FADETO - FAILURE");
                     		callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "SKIPPED"));
                     	}
-    					// result.setKeepCallback(false); 
-
-                        // CallbackContext callbackContext = completeCallbacks.get(audioID);
-                        // if (callbackContext != null) {
-                        //     JSONObject done = new JSONObject();
-                        //     done.put("id", audioID);
-                        //     callbackContext.sendPluginResult(new PluginResult(Status.OK, done));
-                        // }
                         return null;
                     }
                 });
 
-               	// PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
-    			// result.setKeepCallback(true);
+               	PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
+    			result.setKeepCallback(true);
 
-    			return null;
+    			return result;
 
 			} else {
 				return new PluginResult(Status.ERROR, ERROR_NO_AUDIOID);
@@ -284,7 +275,7 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
 		} catch (JSONException e) {
 			return new PluginResult(Status.ERROR, e.toString());
 		}
-		// return new PluginResult(Status.OK);
+
 	}
 
 	private PluginResult executeSetVolumeForComplexAsset(JSONArray data) {
@@ -353,10 +344,7 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
 			} else if (FADETO.equals(action)) {
 				cordova.getThreadPool().execute(new Runnable() {
 		            public void run() {
-		            	PluginResult r = executeFadeTo(data, callbackContext);
-		            	if (r != null) {
-		            		callbackContext.sendPluginResult(r);
-		            	}
+		            	callbackContext.sendPluginResult( executeFadeTo(data, callbackContext) );
 		            }
 		        });
 			} else if (CHAIN.equals(action)) {

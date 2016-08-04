@@ -16,7 +16,7 @@ import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.util.Log;
 import java.lang.Math;
-import android.support.v4.os.AsyncTaskCompat;
+import java.lang.Thread;
 
 public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletionListener {
 
@@ -38,8 +38,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 
     Callable<Void> completeCallback;
     Callable<Void> loadCallback;
-    FadeToCallback fadeToCallback = null;
-    FadeToTask fadeToTask = null;
+    FadeToThread fadeToThread = null;
     AssetFileDescriptor afd;
     float v;
 
@@ -240,41 +239,25 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	}
 
 	public void fadeTo(float to, int duration, FadeToCallback fadeToCb) {
-	
-	if (fadeToCallback != null) {
-				Log.d(TAG, String.format("\n\nEND OF FADE SKIPPED\n\n"));
 
-		fadeToCallback.setSuccess(false);
+	    if (fadeToThread != null) {
+	    	fadeToThread.cancel();
+	    	fadeToThread = null;
+	    }
 
-		try {
-        	fadeToCallback.call();
-
-    	} catch (Exception e) {
-    		Log.d(TAG, String.format("\n\nEND OF FADE SKIPPED ERROR\n\n"));
-
-    	}
-    }
-    if (fadeToTask != null) {
-    	fadeToTask.cancel(true);
-    	fadeToTask = null;
-    }
-
-    fadeToCallback = fadeToCb;
-    
-    fadeToTask = new FadeToTask();
-
-    fadeToTask.setParams(to, duration, this);
-	AsyncTaskCompat.executeParallel(fadeToTask);
-    // .execute();
-    // fto = to.floatValue;
-    // fduration = duration.floatValue;
-    // fsteps = floor(fduration/50);
+	    fadeToThread = new FadeToThread(to, duration, this, fadeToCb);
+	    fadeToThread.start();
+ 
 	}
 
 	public void setVolume(float volume) 
 	{
         try
         {
+        	if (fadeToThread != null) {
+		    	fadeToThread.cancel();
+		    	fadeToThread = null;
+		    }
         	v = volume;
 			mp.setVolume(v, v);
 			if (nextMp != null) {
@@ -347,53 +330,69 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		}
 	}
 
-
-	private class FadeToTask extends AsyncTask<String, Void, String> {
-		private float to;
+  	private class FadeToThread extends Thread {
+        private float to;
 		private int duration;
 		private NativeAudioAssetComplex asset;
+		FadeToCallback callback;
+		volatile boolean running = true;
+        
+        FadeToThread(float t, int d, NativeAudioAssetComplex n, FadeToCallback fadeToCb) {
+            to = t;
+			duration = d;
+			asset = n;
+			callback = fadeToCb;
+        }
 
-		@Override
-        protected String doInBackground(String... params) {
-        	Log.d(TAG, String.format("\n\nTASK STARTED\n\n"));
-        	int steps = (int)(Math.floor(duration/100));
-
+         public void run() {
+			Log.d(TAG, String.format("\n\nThread STARTED\n\n"));
+        	int steps = (int)(Math.floor(duration/50));
 
         	float increment = (to - v)/steps;
-
-		    while (mp.isPlaying() && steps > 0 && Math.abs(to - v) > 0) {
-	            asset.setVolume(v + increment) ;
-	            steps--;
-	            if (isCancelled()) {
-	            	return "";
-	            }
+		    while (running  &&
+		    		steps > 0 &&
+		    		mp.isPlaying() && Math.abs(to - v) > 0) {
+	
+		    	v += increment;
 		    	try {
-	            	Thread.sleep(100);
+		            mp.setVolume(v, v);
+					if (nextMp != null) {
+						nextMp.setVolume(v, v);
+					}
+				} catch (Exception e) {
+
+				}
+
+
+	            steps--;
+		    	try {
+	            	Thread.sleep(50);
 	        	} catch (Exception e) {
 
 	        	}
         	
 		    }
-			if (fadeToCallback != null) {
-				fadeToCallback.setSuccess(true);
-				try {
+		
+			callback.setSuccess(running);
+			try {
+				if (running) {
 					Log.d(TAG, String.format("\n\nEND OF FADE SUCCESS\n\n"));
-		        	fadeToCallback.call();
-		    	} catch (Exception e) {
-		    		Log.d(TAG, String.format("\n\nEND OF FADE ERROR\n\n"));
-		    	}
-		    }
-		    return "";
+				} else {
+					Log.d(TAG, String.format("\n\nEND OF FADE INTERRUPT\n\n"));
 
-        }
+				}
+	        	callback.call(); 
+	    	} catch (Exception e) {
+	    		Log.d(TAG, String.format("\n\nEND OF FADE ERROR\n\n"));
+	    	}
+		    
+         }
 
-		public void setParams(float t, int d, NativeAudioAssetComplex n) {
-			to = t;
-			duration = d;
-			asset = n;
-		}
+         public void cancel() {
+         	running = false;
+         }
+     }
 
-	}
 
 	private class ResetNoLoop extends AsyncTask<String, Void, String> {
 

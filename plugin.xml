@@ -31,9 +31,6 @@
             </feature>
         </config-file>
 
-
-        <lib-file src="src/android/libs/android-support-v4.jar" />
-
         <source-file src="src/android/NativeAudio.java" target-dir="src/com/rjfun/cordova/plugin/nativeaudio"/>
         <source-file src="src/android/NativeAudioAsset.java" target-dir="src/com/rjfun/cordova/plugin/nativeaudio"/>
         <source-file src="src/android/NativeAudioAssetComplex.java" target-dir="src/com/rjfun/cordova/plugin/nativeaudio"/>

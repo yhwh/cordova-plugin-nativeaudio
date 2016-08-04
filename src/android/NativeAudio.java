@@ -132,8 +132,7 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
 			if (assetMap.containsKey(audioID)) {
 				NativeAudioAsset asset = assetMap.get(audioID);
 				if (LOOP.equals(action)) {
-					int count = data.getInt(1);
-					asset.loop(count);
+					asset.loop();
 				 } else {
 				 	asset.play(new Callable<Void>() {
                         public Void call() throws Exception {

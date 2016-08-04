@@ -27,8 +27,6 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	private static final int PENDING_LOOP = 4;
 	private static final int LOOPING = 5;
 	private static final int STOPPED = 6;
-	private int loopCount = -1;
-	private int currentLoopCount = 0;
 	private MediaPlayer mp;
 	private MediaPlayer nextMp = null;
 	private NativeAudioAssetComplex prevAsset = null;
@@ -118,7 +116,11 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		
 		nextMp.setOnPreparedListener(new OnPreparedListener() {
 		     public void onPrepared(MediaPlayer nextMp) {
-		        mp.setNextMediaPlayer(nextMp);
+		     	try {
+		        	mp.setNextMediaPlayer(nextMp);
+		    	} catch (Exception e) {
+		    		
+		    	}
 		     }
 		});
 
@@ -136,7 +138,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	
 	private void invokePlay( Boolean loop ) throws IOException
 	{
-		// Log.d(TAG, String.format("BEFORE invoke: %d", state));
+		Log.d(TAG, String.format("BEFORE invoke: %d", state));
 
 		Boolean playing = mp.isPlaying();
 
@@ -146,24 +148,23 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 			createNextMediaPlayer();
 		} 
 
-		if ( playing )
-		{
-			mp.pause();
-			mp.seekTo(0);
-			state = (loop ? LOOPING : PLAYING);
-			mp.start();
-		}
+		// if ( playing )
+		// {
+		// 	mp.pause();
+		// 	mp.seekTo(0);
+		// 	state = (loop ? LOOPING : PLAYING);
+		// 	mp.start();
+		// }
 
-		if ( !playing )
-		{
-			if (state == PREPARED || state == STOPPED) {
+		// if ( !playing )
+		// {
+			// if (state == PREPARED || state == STOPPED) {
 				state = (loop ? LOOPING : PLAYING);
 				mp.start();
-		
-			} else {
-				state = (loop ? PENDING_LOOP : PENDING_PLAY);
-			}
-		}
+			// } else {
+				// state = (loop ? PENDING_LOOP : PENDING_PLAY);
+			// }
+		// }
 
 
 		Log.d(TAG, String.format("\n\nAFTER PLAY INVOKED: %d\n\n", state));
@@ -197,14 +198,33 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		try
 		{
 			// state = INVALID;
-			// mp.setNextMediaPlayer(null);
+			// 
+			if (nextMp != null) {
+				try {
+					mp.setNextMediaPlayer(null);
+				} catch (Exception e) {
+
+				}
+
+				try {
+					nextMp.stop();
+				} catch (Exception e) {
+					
+				}
+
+				try {
+					nextMp.release();
+				} catch (Exception e) {
+					
+				}
+				
+				nextMp = null;
+			}
 			if ( mp.isPlaying() )
 			{
 				state = STOPPED;
 				mp.pause();
 				mp.seekTo(0);
-				currentLoopCount = 0;
-				loopCount = -1;
 	        }
 		}
 	        catch (IllegalStateException e)
@@ -220,10 +240,10 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	{
         try
         {
-			mp.setVolume(volume,volume);
-			v = volume;
+        	v = volume;
+			mp.setVolume(v, v);
 			if (nextMp != null) {
-				nextMp.setVolume(volume, volume);
+				nextMp.setVolume(v, v);
 			}
         }
             catch (IllegalStateException e) 
@@ -232,12 +252,8 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		}
 	}
 	
-	public void loop(int count) throws IOException
+	public void loop() throws IOException
 	{
-		if (count >= 0) {
-			loopCount = count;
-		}
-		currentLoopCount = 0;
 		invokePlay( true );
 	}
 	
@@ -285,9 +301,8 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 
 
 		// Log.d(TAG, String.format("Completed: %d\n", state));
-		currentLoopCount++;
 
-		if (state != LOOPING || (currentLoopCount >= loopCount && loopCount != -1))
+		if (state != LOOPING)
 		{
 			(new ResetNoLoop()).execute();
 		} else {
@@ -303,7 +318,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		@Override
         protected String doInBackground(String... params) {
         	try {
-            	Thread.sleep(100);
+            	Thread.sleep(500);
         	} catch (Exception e) {
 
         	}
@@ -350,7 +365,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
         @Override
         protected String doInBackground(String... params) {
         	try {
-            	Thread.sleep(100);
+            	Thread.sleep(500);
         	} catch (Exception e) {
 
         	}

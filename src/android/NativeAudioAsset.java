@@ -122,10 +122,10 @@ public class NativeAudioAsset
 		}
 	}
 	
-	public void loop(int count) throws IOException
+	public void loop() throws IOException
 	{
 		NativeAudioAssetComplex voice = voices.get(playIndex);
-		voice.loop(count);
+		voice.loop();
 		playIndex++;
 		playIndex = playIndex % voices.size();
 	}

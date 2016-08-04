@@ -15,6 +15,8 @@ import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.util.Log;
+import java.lang.Math;
+import android.support.v4.os.AsyncTaskCompat;
 
 public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletionListener {
 
@@ -36,7 +38,8 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 
     Callable<Void> completeCallback;
     Callable<Void> loadCallback;
-
+    FadeToCallback fadeToCallback = null;
+    FadeToTask fadeToTask = null;
     AssetFileDescriptor afd;
     float v;
 
@@ -119,7 +122,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		     	try {
 		        	mp.setNextMediaPlayer(nextMp);
 		    	} catch (Exception e) {
-		    		
+
 		    	}
 		     }
 		});
@@ -236,6 +239,38 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 
 	}
 
+	public void fadeTo(float to, int duration, FadeToCallback fadeToCb) {
+	
+	if (fadeToCallback != null) {
+				Log.d(TAG, String.format("\n\nEND OF FADE SKIPPED\n\n"));
+
+		fadeToCallback.setSuccess(false);
+
+		try {
+        	fadeToCallback.call();
+
+    	} catch (Exception e) {
+    		Log.d(TAG, String.format("\n\nEND OF FADE SKIPPED ERROR\n\n"));
+
+    	}
+    }
+    if (fadeToTask != null) {
+    	fadeToTask.cancel(true);
+    	fadeToTask = null;
+    }
+
+    fadeToCallback = fadeToCb;
+    
+    fadeToTask = new FadeToTask();
+
+    fadeToTask.setParams(to, duration, this);
+	AsyncTaskCompat.executeParallel(fadeToTask);
+    // .execute();
+    // fto = to.floatValue;
+    // fduration = duration.floatValue;
+    // fsteps = floor(fduration/50);
+	}
+
 	public void setVolume(float volume) 
 	{
         try
@@ -312,6 +347,53 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		}
 	}
 
+
+	private class FadeToTask extends AsyncTask<String, Void, String> {
+		private float to;
+		private int duration;
+		private NativeAudioAssetComplex asset;
+
+		@Override
+        protected String doInBackground(String... params) {
+        	Log.d(TAG, String.format("\n\nTASK STARTED\n\n"));
+        	int steps = (int)(Math.floor(duration/100));
+
+
+        	float increment = (to - v)/steps;
+
+		    while (mp.isPlaying() && steps > 0 && Math.abs(to - v) > 0) {
+	            asset.setVolume(v + increment) ;
+	            steps--;
+	            if (isCancelled()) {
+	            	return "";
+	            }
+		    	try {
+	            	Thread.sleep(100);
+	        	} catch (Exception e) {
+
+	        	}
+        	
+		    }
+			if (fadeToCallback != null) {
+				fadeToCallback.setSuccess(true);
+				try {
+					Log.d(TAG, String.format("\n\nEND OF FADE SUCCESS\n\n"));
+		        	fadeToCallback.call();
+		    	} catch (Exception e) {
+		    		Log.d(TAG, String.format("\n\nEND OF FADE ERROR\n\n"));
+		    	}
+		    }
+		    return "";
+
+        }
+
+		public void setParams(float t, int d, NativeAudioAssetComplex n) {
+			to = t;
+			duration = d;
+			asset = n;
+		}
+
+	}
 
 	private class ResetNoLoop extends AsyncTask<String, Void, String> {
 

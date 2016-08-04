@@ -20,6 +20,10 @@ typedef void (^CompleteCallback)(NSString*);
     NSNumber *fadeDelay;
     NativeAudioAsset* chainedAsset;
     bool chainLoop;
+    CGFloat fto;
+    CGFloat fduration;
+    void (^fhandler)(bool success);
+    int fsteps;
 }
 
 - (id) initWithPath:(NSString*) path withVoices:(NSNumber*) numVoices withVolume:(NSNumber*) volume withFadeDelay:(NSNumber *)delay;
@@ -31,6 +35,8 @@ typedef void (^CompleteCallback)(NSString*);
 - (void) chain:(NativeAudioAsset*) asset loop:(bool) loop;
 - (void) loop;
 - (void) unload;
+- (void) fadeTo:(NSNumber*) to duration:(NSNumber*) duration handler: (void(^)(bool))handler;
+- (void) _fadeTo;
 - (void) setVolume:(NSNumber*) volume;
 - (void) playAtTime:(NSTimeInterval)time;
 - (void) setCallbackAndId:(CompleteCallback)cb audioId:(NSString*)audioId;

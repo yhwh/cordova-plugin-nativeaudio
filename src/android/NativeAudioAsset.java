@@ -41,6 +41,14 @@ public class NativeAudioAsset
 		playIndex = playIndex % voices.size();
 	}
 
+	public void fadeTo(float to, int duration, FadeToCallback fadeToCb) {
+		for ( int x=0; x<voices.size(); x++)
+		{
+				NativeAudioAssetComplex voice = voices.get(x);
+				voice.fadeTo(to, duration, fadeToCb);
+		}
+	}
+
 	public boolean pause()
 	{
 		boolean wasPlaying = false;

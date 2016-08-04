@@ -160,6 +160,55 @@ static const CGFloat FADE_DELAY = 0.08;
     }
 }
 
+- (void)_fadeTo
+{
+    BOOL shouldContinue = NO;
+    CGFloat fstep = 0;
+
+
+    if (fhandler == nil) {
+        return;
+    }
+
+    for (int x = 0; x < [voices count]; x++) {
+        AVAudioPlayer * player = [voices objectAtIndex:x];
+        fstep = (fto - player.volume)/fsteps;
+        if (player.isPlaying && fsteps > 0 && fabsf(fto - player.volume) > 0) {
+            player.volume += fstep;
+            // NSLog([NSString stringWithFormat:@"FTO %0.2F STEP: %0.2f VOL: %0.2f STEPS: %d", fto, fstep, player.volume, fsteps]);
+            fsteps--;
+            shouldContinue = YES;
+        } 
+    }
+
+
+    if (shouldContinue) {
+        [self performSelector:@selector(_fadeTo) withObject:nil afterDelay:0.05];
+    } else if (fhandler != nil) {
+        fhandler(true);
+        // [fhandler release];
+        fhandler = nil;
+    }
+         
+}
+
+- (void)fadeTo:(NSNumber*) to duration:(NSNumber *)duration handler: (void(^)(bool))handler
+{
+    
+    if (fhandler) {
+        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(_fadeTo) object:nil];
+        fhandler(false);
+        // [fhandler release];
+        fhandler = nil;
+    }
+    fto = to.floatValue;
+    fduration = duration.floatValue;
+    fsteps = floor(fduration/50);
+
+    fhandler = [handler copy];
+    [self _fadeTo];
+}
+
 // The volume is decreased repeatedly by the fade step amount until the volume reaches the configured level.
 // The delay determines how fast the increase happens
 - (void)stopWithFade
@@ -208,6 +257,11 @@ static const CGFloat FADE_DELAY = 0.08;
 
 - (void) setVolume:(NSNumber*) volume;
 {
+    if (fhandler) {
+        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(_fadeTo) object:nil];
+        fhandler(false);
+        fhandler = nil;
+    }
 
     for (int x = 0; x < [voices count]; x++) {
         AVAudioPlayer * player = [voices objectAtIndex:x];

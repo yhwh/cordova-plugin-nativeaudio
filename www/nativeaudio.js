@@ -45,6 +45,10 @@ module.exports  = {
         
     },
 
+    fadeTo: function(id, to, duration, successCallback, errorCallback) {
+        return cordova.exec(successCallback, errorCallback, "NativeAudio", "fadeTo", [id, to, duration]);
+    },
+
     stop: function(id, successCallback, errorCallback) {
         return cordova.exec(successCallback, errorCallback, "NativeAudio", "stop", [id]);
     },

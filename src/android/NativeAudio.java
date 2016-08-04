@@ -45,6 +45,7 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
 	public static final String STOP="stop";
 	public static final String LOOP="loop";
 	public static final String CHAIN="chain";
+	public static final String FADETO="fadeTo";
 	public static final String UNLOAD="unload";
     public static final String ADD_COMPLETE_LISTENER="addCompleteListener";
 	public static final String SET_VOLUME_FOR_COMPLEX_ASSET="setVolumeForComplexAsset";
@@ -235,6 +236,57 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
 		return new PluginResult(Status.OK);
 	}
 
+	private PluginResult executeFadeTo(JSONArray data, final CallbackContext callbackContext) {
+	
+		try {
+			final String audioID = data.getString(0);
+			float to = (float) data.getDouble(1);
+			int duration = (int) data.getDouble(2);
+			Log.d( LOGTAG, "fadeTo - " + audioID );
+			
+			if (assetMap.containsKey(audioID)) {
+				NativeAudioAsset asset = assetMap.get(audioID);
+
+				asset.fadeTo(to, duration, new FadeToCallback() {
+					@Override
+                    public Void call() throws Exception {
+                    	JSONObject done = new JSONObject();
+                        done.put("id", audioID);
+                        // PluginResult result =;
+                        if (this.getSuccess()) {
+                        	Log.d(LOGTAG, "FADETO - SUCCESS");
+
+                    		callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK));
+                    	}  else {
+                    		  Log.d(LOGTAG, "FADETO - FAILURE");
+                    		callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "SKIPPED"));
+                    	}
+    					// result.setKeepCallback(false); 
+
+                        // CallbackContext callbackContext = completeCallbacks.get(audioID);
+                        // if (callbackContext != null) {
+                        //     JSONObject done = new JSONObject();
+                        //     done.put("id", audioID);
+                        //     callbackContext.sendPluginResult(new PluginResult(Status.OK, done));
+                        // }
+                        return null;
+                    }
+                });
+
+               	// PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
+    			// result.setKeepCallback(true);
+
+    			return null;
+
+			} else {
+				return new PluginResult(Status.ERROR, ERROR_NO_AUDIOID);
+			}
+		} catch (JSONException e) {
+			return new PluginResult(Status.ERROR, e.toString());
+		}
+		// return new PluginResult(Status.OK);
+	}
+
 	private PluginResult executeSetVolumeForComplexAsset(JSONArray data) {
 		String audioID;
 		float volume;
@@ -296,6 +348,17 @@ public class NativeAudio extends CordovaPlugin implements AudioManager.OnAudioFo
 		            }
 		        });				
 
+
+
+			} else if (FADETO.equals(action)) {
+				cordova.getThreadPool().execute(new Runnable() {
+		            public void run() {
+		            	PluginResult r = executeFadeTo(data, callbackContext);
+		            	if (r != null) {
+		            		callbackContext.sendPluginResult(r);
+		            	}
+		            }
+		        });
 			} else if (CHAIN.equals(action)) {
 				cordova.getThreadPool().execute(new Runnable() {
 		            public void run() {

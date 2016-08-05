@@ -322,11 +322,28 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 
 		if (state != LOOPING)
 		{
-			(new ResetNoLoop()).execute();
-		} else {
-			// oldMp = mPlayer;
-			(new ResetLoop()).execute();
-	
+			try {
+
+
+				state = INVALID;
+				mp.pause();
+				mp.seekTo(0);
+
+				if (completeCallback != null)
+	                completeCallback.call();
+				}
+			catch (Exception e)
+			{
+				e.printStackTrace();
+			}
+		} else {	
+		    mp.release();	  
+            mp = nextMp;
+
+            try {
+				createNextMediaPlayer();
+			} catch (IOException e) {
+			}
 		}
 	}
 
@@ -394,72 +411,4 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
      }
 
 
-	private class ResetNoLoop extends AsyncTask<String, Void, String> {
-
-		@Override
-        protected String doInBackground(String... params) {
-        	try {
-            	Thread.sleep(500);
-        	} catch (Exception e) {
-
-        	}
-        	
-
-			mp.release();
-
-			try {
-
-
-				state = INVALID;
-				mp = new CompatMediaPlayer();
-
-		        mp.setOnPreparedListener(currentAsset);
-
-		       	if (afd == null) {
-		            mp.setDataSource(url);
-		       	} else {
-		       		mp.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
-		       	}
-
-				mp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
-				mp.setVolume(v, v);
-
-				mp.prepareAsync();
-				mp.setOnCompletionListener(currentAsset);
-
-
-
-			if (completeCallback != null)
-                completeCallback.call();
-			}
-			catch (Exception e)
-			{
-				e.printStackTrace();
-			}
-			return "";
-       }
-
-
-    }
-	 private class ResetLoop extends AsyncTask<String, Void, String> {
-
-        @Override
-        protected String doInBackground(String... params) {
-        	try {
-            	Thread.sleep(500);
-        	} catch (Exception e) {
-
-        	}
-            mp.release();	  
-            mp = nextMp;
-
-            try {
-				createNextMediaPlayer();
-			} catch (IOException e) {
-			}
-
-			return "";
-        }
-
-    }
 }

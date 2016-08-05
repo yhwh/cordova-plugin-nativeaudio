@@ -150,23 +150,20 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 			createNextMediaPlayer();
 		} 
 
-		// if ( playing )
-		// {
-		// 	mp.pause();
-		// 	mp.seekTo(0);
-		// 	state = (loop ? LOOPING : PLAYING);
-		// 	mp.start();
-		// }
+		if ( playing )
+		{
+			mp.pause();
+			mp.seekTo(0);
+			state = (loop ? LOOPING : PLAYING);
+			mp.start();
+		}
 
-		// if ( !playing )
-		// {
-			// if (state == PREPARED || state == STOPPED) {
-				state = (loop ? LOOPING : PLAYING);
-				mp.start();
-			// } else {
-				// state = (loop ? PENDING_LOOP : PENDING_PLAY);
-			// }
-		// }
+		if ( !playing ) {
+
+			state = (loop ? LOOPING : PLAYING);
+			mp.start();
+
+		}
 
 
 		Log.d(TAG, String.format("\n\nAFTER PLAY INVOKED: %d\n\n", state));
@@ -324,10 +321,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		{
 			try {
 
-
 				state = INVALID;
-				mp.pause();
-				mp.seekTo(0);
 
 				if (completeCallback != null)
 	                completeCallback.call();

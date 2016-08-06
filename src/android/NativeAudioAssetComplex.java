@@ -59,7 +59,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 
   		url = uri;
 
-	mp = new MediaPlayer();
+		mp = new MediaPlayer();
        	if (afd == null) {
             mp.setDataSource(url);
        	} else {

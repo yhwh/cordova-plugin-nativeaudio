@@ -70,32 +70,6 @@ public class NativeAudioAsset
 		}
 	}
 
-	public void chain(NativeAudioAsset asset2, boolean loop)  {
-		if (voices.size() > 0)
-		{
-			NativeAudioAssetComplex voice = voices.get(0);
-			if (loop) {
-				asset2.prepareLoop();
-			}
-			asset2.chainWithPrev(voice);
-		}
-	}
-
-	public void chainWithPrev(NativeAudioAssetComplex p)  {
-		if (voices.size() > 0)
-		{
-			NativeAudioAssetComplex voice = voices.get(0);
-			voice.chainWithPrev(p);
-		}
-	}
-
-	public void prepareLoop()  {
-		if (voices.size() > 0)
-		{
-			NativeAudioAssetComplex voice = voices.get(0);
-			voice.prepareLoop();
-		}
-	}
 
 	public void setCompleteCb (Callable<Void> completeCb) {
 		if (voices.size() > 0)

@@ -17,7 +17,8 @@ import android.media.MediaPlayer.OnPreparedListener;
 import android.util.Log;
 import java.lang.Math;
 import java.lang.Thread;
-
+import 	android.os.Build;
+// import android.os.Build;
 public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletionListener {
 
 	private static final String TAG = NativeAudioAssetComplex.class.getSimpleName();
@@ -31,7 +32,6 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	private static final int STOPPED = 6;
 	private MediaPlayer mp;
 	private MediaPlayer nextMp = null;
-	private NativeAudioAssetComplex prevAsset = null;
 	private int state;
 	private String url;
 	private boolean loopChain = false;
@@ -41,20 +41,25 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
     FadeToThread fadeToThread = null;
     AssetFileDescriptor afd;
     float v;
-
+	boolean mCompatMode = false; 
     NativeAudioAssetComplex currentAsset;
 
 	public NativeAudioAssetComplex(AssetFileDescriptor a, String uri, float volume)  throws IOException
 	{
+
+        mCompatMode = Build.VERSION.SDK_INT < 16;
+
+
 		currentAsset = this;
 		state = INVALID;
-		mp = new CompatMediaPlayer();
+		
 
 
   		afd = a;
 
   		url = uri;
 
+	mp = new MediaPlayer();
        	if (afd == null) {
             mp.setDataSource(url);
        	} else {
@@ -76,11 +81,6 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		return mp;
 	}
 
-	public void chainWithPrev(NativeAudioAssetComplex p) {
-		prevAsset = p;
-		prevAsset.getPlayer().setNextMediaPlayer(mp);
-	}
-
 	public void setLoadCb(Callable<Void> loadCb) {
 		loadCallback = loadCb;
 	}
@@ -89,21 +89,10 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
    		completeCallback = completeCb;
 	}
 
-	public void prepareLoop() {
-
-		    try {
-				createNextMediaPlayer();
-				state = LOOPING;
-				Log.d(TAG, String.format("AAAAAAAA  PREPARE LOOP !!!!"));
-
-			} catch (IOException e) {
-			};
-	
-	}
 
 	private void createNextMediaPlayer() throws IOException {
 
-        nextMp = new CompatMediaPlayer();
+        nextMp = new MediaPlayer();
 
        	if (afd == null) {
             nextMp.setDataSource(url);
@@ -116,6 +105,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		nextMp.setVolume(v, v);
 		
 		
+	
 		nextMp.setOnPreparedListener(new OnPreparedListener() {
 		     public void onPrepared(MediaPlayer nextMp) {
 		     	try {
@@ -125,6 +115,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		    	}
 		     }
 		});
+
 
 		nextMp.prepareAsync();
 
@@ -140,17 +131,11 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	
 	private void invokePlay( Boolean loop ) throws IOException
 	{
-		Log.d(TAG, String.format("BEFORE invoke: %d", state));
+
 
 		Boolean playing = mp.isPlaying();
 
-
-
-		if (loop) {
-			createNextMediaPlayer();
-		} 
-
-		if ( playing )
+		if (playing)
 		{
 			mp.pause();
 			mp.seekTo(0);
@@ -158,15 +143,27 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 			mp.start();
 		}
 
-		if ( !playing ) {
 
+		if (!playing) {
 			state = (loop ? LOOPING : PLAYING);
 			mp.start();
-
 		}
 
 
-		Log.d(TAG, String.format("\n\nAFTER PLAY INVOKED: %d\n\n", state));
+		if (loop) {
+			if (mCompatMode) {
+				mp.setLooping(true);
+			} else {
+				createNextMediaPlayer();
+			}
+		} else {
+			if (mCompatMode) {
+				mp.setLooping(false);
+			} else {
+				mp.setNextMediaPlayer(null);
+			}
+		}
+
 
 	}
 
@@ -182,7 +179,6 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
     	}
 		catch (IllegalStateException e)
 		{
-		// I don't know why this gets thrown; catch here to save app
 		}
 		return false;
 	}
@@ -199,12 +195,12 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 			// state = INVALID;
 			// 
 			if (nextMp != null) {
+	
 				try {
 					mp.setNextMediaPlayer(null);
 				} catch (Exception e) {
-
+					
 				}
-
 				try {
 					nextMp.stop();
 				} catch (Exception e) {
@@ -219,6 +215,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 				
 				nextMp = null;
 			}
+
 			if ( mp.isPlaying() )
 			{
 				state = STOPPED;
@@ -281,19 +278,9 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	public void onPrepared(MediaPlayer mPlayer) 
 	{
 
-		Log.d(TAG, String.format("\n\n BEFORE PREPARED: %d\n\n", state));
-
-
 		state = PREPARED;
 		
-		
-		Log.d(TAG, String.format("\n\nAFTER PREPARED: %d\n\n", state));
-
-		if (prevAsset != null) {
-			Log.d(TAG, String.format("AAAAAAAA  setting next media player !!!!"));
-			prevAsset.getPlayer().setNextMediaPlayer(mp);
-		}
-
+	
 		if (loadCallback != null) {
 			try {
 				loadCallback.call();
@@ -303,10 +290,6 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 			}
 			
 			loadCallback = null;
-		}
-
-		if (prevAsset != null) {
-			prevAsset.getPlayer().setNextMediaPlayer(mp);
 		}
 
 	}
@@ -331,9 +314,10 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 				e.printStackTrace();
 			}
 		} else {	
+	
 		    mp.release();	  
             mp = nextMp;
-
+      
             try {
 				createNextMediaPlayer();
 			} catch (IOException e) {
@@ -356,7 +340,6 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
         }
 
          public void run() {
-			Log.d(TAG, String.format("\n\nThread STARTED\n\n"));
         	int steps = (int)(Math.floor(duration/50));
 
         	float increment = (to - v)/steps;
@@ -386,15 +369,8 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		
 			callback.setSuccess(running);
 			try {
-				if (running) {
-					Log.d(TAG, String.format("\n\nEND OF FADE SUCCESS\n\n"));
-				} else {
-					Log.d(TAG, String.format("\n\nEND OF FADE INTERRUPT\n\n"));
-
-				}
 	        	callback.call(); 
 	    	} catch (Exception e) {
-	    		Log.d(TAG, String.format("\n\nEND OF FADE ERROR\n\n"));
 	    	}
 		    
          }

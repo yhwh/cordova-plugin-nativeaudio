@@ -16,8 +16,7 @@ static const CGFloat FADE_DELAY = 0.08;
 -(id) initWithPath:(NSString*) path withVoices:(NSNumber*) numVoices withVolume:(NSNumber*) volume withFadeDelay:(NSNumber *)delay
 {
     self = [super init];
-    self->chainedAsset = nil;
-    self->chainLoop = false;
+
     if(self) {
         voices = [[NSMutableArray alloc] init];  
         
@@ -49,8 +48,7 @@ static const CGFloat FADE_DELAY = 0.08;
 -(id) initWithUrl:(NSString*) url withVoices:(NSNumber*) numVoices withVolume:(NSNumber*) volume withFadeDelay:(NSNumber *)delay
 {
     self = [super init];
-    self->chainedAsset = nil;
-    self->chainLoop = false;
+
     if(self) {
         voices = [[NSMutableArray alloc] init];  
         
@@ -80,30 +78,7 @@ static const CGFloat FADE_DELAY = 0.08;
 }
 
 
-- (void) chain:(NativeAudioAsset*) asset loop:(bool)loop;
-{
-    chainedAsset = asset;
-    chainedAsset->chainLoop = loop;
-}
 
-- (void) playAtTime:(NSTimeInterval)time;
-{
-    AVAudioPlayer * player = [voices objectAtIndex:playIndex];
-
-    if (self->chainedAsset) {
-        NativeAudioAsset * asset = self->chainedAsset;
-        [asset playAtTime: time + player.duration];
-    }
-    
-    [player playAtTime: time];
-
-    if (chainLoop) {
-        player.numberOfLoops = -1;
-    } else {
-        player.numberOfLoops = 0;
-    }
-
-}
 
 - (void) play
 {
@@ -111,11 +86,6 @@ static const CGFloat FADE_DELAY = 0.08;
     [player setCurrentTime:0.0];
     player.numberOfLoops = 0;
     [player play];
-
-    if (self->chainedAsset) {
-        NativeAudioAsset * asset = self->chainedAsset;
-        [asset playAtTime: player.currentTime + player.deviceCurrentTime + player.duration + 0.01];
-    }
     
     playIndex += 1;
     playIndex = playIndex % [voices count];

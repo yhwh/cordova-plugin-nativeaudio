@@ -27,7 +27,6 @@
 - (void) play:(CDVInvokedUrlCommand *)command;
 - (void) stop:(CDVInvokedUrlCommand *)command;
 - (void) loop:(CDVInvokedUrlCommand *)command;
-- (void) chain:(CDVInvokedUrlCommand *)command;
 - (void) fadeTo:(CDVInvokedUrlCommand *)command;
 - (void) unload:(CDVInvokedUrlCommand *)command;
 - (void) setVolumeForComplexAsset:(CDVInvokedUrlCommand *)command;

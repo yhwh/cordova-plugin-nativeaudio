@@ -35,13 +35,13 @@ NSString* INFO_VOLUME_CHANGED = @"(NATIVE AUDIO) Volume changed.";
     NSError *setCategoryError = nil;
 
     // Allows the application to mix its audio with audio from other apps.
-    // if (![session setCategory:AVAudioSessionCategoryAmbient
-    //               withOptions:AVAudioSessionCategoryOptionMixWithOthers
-    //                     error:&setCategoryError]) {
+    if (![session setCategory:AVAudioSessionCategoryAmbient
+                  withOptions:AVAudioSessionCategoryOptionMixWithOthers
+                        error:&setCategoryError]) {
 
-    //     NSLog (@"Error setting audio session category.");
-    //     return;
-    // }
+        NSLog (@"Error setting audio session category.");
+        return;
+    }
 
     [session setActive: YES error: nil];
     // [session setCategory:AVAudioSessionCategoryPlayback error:nil];

@@ -31,7 +31,6 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	private static final int LOOPING = 5;
 	private static final int STOPPED = 6;
 	private MediaPlayer mp;
-	private MediaPlayer nextMp = null;
 	private int state;
 	private String url;
 	private boolean loopChain = false;
@@ -41,13 +40,10 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
     FadeToThread fadeToThread = null;
     AssetFileDescriptor afd;
     float v;
-	boolean mCompatMode = false; 
     NativeAudioAssetComplex currentAsset;
 
 	public NativeAudioAssetComplex(AssetFileDescriptor a, String uri, float volume)  throws IOException
 	{
-
-        mCompatMode = Build.VERSION.SDK_INT < 16;
 
 
 		currentAsset = this;
@@ -71,7 +67,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		mp.setVolume(volume, volume);
 	
 		mp.setOnPreparedListener(this);
-		mp.prepareAsync();
+		mp.prepare();
 
 		mp.setOnCompletionListener(this);
 
@@ -89,39 +85,6 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
    		completeCallback = completeCb;
 	}
 
-
-	private void createNextMediaPlayer() throws IOException {
-
-        nextMp = new MediaPlayer();
-
-       	if (afd == null) {
-            nextMp.setDataSource(url);
-       	} else {
-		    nextMp.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
-       	}
-
-        
-		nextMp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
-		nextMp.setVolume(v, v);
-		
-		
-	
-		nextMp.setOnPreparedListener(new OnPreparedListener() {
-		     public void onPrepared(MediaPlayer nextMp) {
-		     	try {
-		        	mp.setNextMediaPlayer(nextMp);
-		    	} catch (Exception e) {
-
-		    	}
-		     }
-		});
-
-
-		nextMp.prepareAsync();
-
-		nextMp.setOnCompletionListener(this);
-  
-    }
 
 	public void play(Callable<Void> completeCb) throws IOException
 	{
@@ -151,17 +114,9 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 
 
 		if (loop) {
-			if (mCompatMode) {
-				mp.setLooping(true);
-			} else {
-				createNextMediaPlayer();
-			}
+			mp.setLooping(true);
 		} else {
-			if (mCompatMode) {
-				mp.setLooping(false);
-			} else {
-				mp.setNextMediaPlayer(null);
-			}
+			mp.setLooping(false);
 		}
 
 
@@ -192,29 +147,6 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 	{
 		try
 		{
-			// state = INVALID;
-			// 
-			if (nextMp != null) {
-	
-				try {
-					mp.setNextMediaPlayer(null);
-				} catch (Exception e) {
-					
-				}
-				try {
-					nextMp.stop();
-				} catch (Exception e) {
-					
-				}
-
-				try {
-					nextMp.release();
-				} catch (Exception e) {
-					
-				}
-				
-				nextMp = null;
-			}
 
 			if ( mp.isPlaying() )
 			{
@@ -254,9 +186,6 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		    }
         	v = volume;
 			mp.setVolume(v, v);
-			if (nextMp != null) {
-				nextMp.setVolume(v, v);
-			}
         }
             catch (IllegalStateException e) 
 		{
@@ -313,15 +242,6 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 			{
 				e.printStackTrace();
 			}
-		} else {	
-	
-		    mp.release();	  
-            mp = nextMp;
-      
-            try {
-				createNextMediaPlayer();
-			} catch (IOException e) {
-			}
 		}
 	}
 
@@ -350,9 +270,6 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		    	v += increment;
 		    	try {
 		            mp.setVolume(v, v);
-					if (nextMp != null) {
-						nextMp.setVolume(v, v);
-					}
 				} catch (Exception e) {
 
 				}

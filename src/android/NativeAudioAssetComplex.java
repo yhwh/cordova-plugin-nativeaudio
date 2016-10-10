@@ -67,7 +67,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
 		mp.setVolume(volume, volume);
 	
 		mp.setOnPreparedListener(this);
-		mp.prepare();
+		mp.prepareAsync();
 
 		mp.setOnCompletionListener(this);
 

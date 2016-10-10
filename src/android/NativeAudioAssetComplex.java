@@ -56,6 +56,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
   		url = uri;
 
 		mp = new MediaPlayer();
+		mp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
        	if (afd == null) {
             mp.setDataSource(url);
        	} else {
@@ -63,7 +64,7 @@ public class NativeAudioAssetComplex implements OnPreparedListener, OnCompletion
        	}
         
         v = volume;
-		mp.setAudioStreamType(AudioManager.STREAM_MUSIC); 
+		
 		mp.setVolume(volume, volume);
 	
 		mp.setOnPreparedListener(this);
